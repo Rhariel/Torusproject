@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+spacy
+transformers
+torch
+scikit-learn
+sentencepiece
+protobuf
+python-multipart

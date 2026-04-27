@@ -1,0 +1,25 @@
+{
+  "meeting_id": 101,
+  "conversation": [
+    {
+      "speaker": "vendedor",
+      "text": "Bom dia, gostaria de entender como esta sua experiencia com a plataforma."
+    },
+    {
+      "speaker": "cliente",
+      "text": "Estamos usando bem, mas estou achando o valor um pouco caro."
+    },
+    {
+      "speaker": "cliente",
+      "text": "Se nao melhorarmos isso, talvez eu cancele no proximo trimestre."
+    },
+    {
+      "speaker": "vendedor",
+      "text": "Posso revisar a proposta e incluir um novo modulo que aumente o valor entregue."
+    },
+    {
+      "speaker": "cliente",
+      "text": "Se vier com mais automacao e treinamento, pode fazer sentido expandir."
+    }
+  ]
+}

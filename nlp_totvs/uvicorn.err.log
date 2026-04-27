@@ -1,0 +1,11 @@
+INFO:     Started server process [5200]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|##########| 201/201 [00:00<00:00, 16083.93it/s]
+forrtl: error (200): program aborting due to window-CLOSE event
+Image              PC                Routine            Line        Source             
+KERNELBASE.dll     00007FFFF870A3CD  Unknown               Unknown  Unknown
+KERNEL32.DLL       00007FFFFA66E8D7  Unknown               Unknown  Unknown
+ntdll.dll          00007FFFFB68C3FC  Unknown               Unknown  Unknown
