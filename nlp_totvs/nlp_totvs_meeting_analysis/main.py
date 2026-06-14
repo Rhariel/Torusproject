@@ -384,30 +384,30 @@ def dashboard() -> str:
             <div id="results" style="display:none;">
                 <div class="grid">
                     <div class="panel metric">
-                        <span>Risco de churn</span>
+                        <span>Risco consolidado</span>
                         <strong id="riskScore">0</strong>
                         <small>Score final de 0 a 100</small>
                     </div>
                     <div class="panel metric">
-                        <span>Sentimento medio do cliente</span>
+                        <span>Sentimento Global</span>
                         <strong id="avgSentiment">0</strong>
                         <small>Media das falas do cliente</small>
                     </div>
                     <div class="panel metric">
-                        <span>Sinais de churn</span>
+                        <span>Mensagens Processadas</span>
                         <strong id="churnSignals">0</strong>
-                        <small>Mensagens com indicio de cancelamento</small>
+                        <small>Total de mensagens analisadas</small>
                     </div>
                     <div class="panel metric">
-                        <span>Upsell identificado</span>
+                        <span>Total de Entidades</span>
                         <strong id="upsellCount">0</strong>
-                        <small>Possiveis oportunidades comerciais</small>
+                        <small>Entidades identificadas no texto</small>
                     </div>
                 </div>
 
                 <div class="sections">
                     <div class="panel section">
-                        <h2>Leitura executiva</h2>
+                        <h2>Métricas e Sinais</h2>
                         <p class="legend">
                             Este bloco resume os indicadores mais importantes da reuniao para uso gerencial.
                         </p>
@@ -433,7 +433,7 @@ def dashboard() -> str:
                     </div>
 
                     <div class="panel section">
-                        <h2>Analise detalhada por mensagem</h2>
+                        <h2>Histórico da Conversa</h2>
                         <p class="legend">
                             Cada card mostra quem falou, o texto analisado, a intencao detectada,
                             o sentimento e os sinais relevantes para a reuniao.
@@ -485,7 +485,10 @@ def dashboard() -> str:
                 const container = document.getElementById("messageList");
                 container.innerHTML = "";
 
+                let totalEntities = 0;
+
                 messages.forEach((message, index) => {
+                    totalEntities += message.entities.length;
                     const entities = message.entities.length
                         ? message.entities.map((entity) => `${entity.text} (${entity.label})`).join(", ")
                         : "Nenhuma entidade relevante.";
@@ -511,14 +514,14 @@ def dashboard() -> str:
                     `;
                     container.appendChild(card);
                 });
+                return totalEntities;
             }
 
             function renderDashboard(data) {
                 const summary = data.summary;
                 document.getElementById("riskScore").textContent = summary.churn_risk_score;
                 document.getElementById("avgSentiment").textContent = summary.average_customer_sentiment;
-                document.getElementById("churnSignals").textContent = summary.churn_signals;
-                document.getElementById("upsellCount").textContent = summary.upsell_opportunities;
+                document.getElementById("churnSignals").textContent = data.message_analysis.length;
 
                 document.getElementById("clientShareLabel").textContent = formatPercent(summary.speech_ratio.cliente);
                 document.getElementById("sellerShareLabel").textContent = formatPercent(summary.speech_ratio.vendedor);
@@ -528,7 +531,8 @@ def dashboard() -> str:
                 document.getElementById("riskBar").style.width = `${summary.churn_risk_score}%`;
 
                 renderObjections(summary.objections);
-                renderMessages(data.message_analysis);
+                const totalEntities = renderMessages(data.message_analysis);
+                document.getElementById("upsellCount").textContent = totalEntities;
 
                 emptyState.style.display = "none";
                 results.style.display = "block";
@@ -606,8 +610,8 @@ def analyze_message(payload: MessagePayload) -> dict:
     tags=["Analise NLP"],
     summary="Analisar reuniao completa",
     description=(
-        "Recebe uma reuniao com varias falas e retorna a analise consolidada "
-        "e o detalhamento por mensagem."
+            "Recebe uma reuniao com varias falas e retorna a analise consolidada "
+            "e o detalhamento por mensagem."
     ),
 )
 def analyze_complete_meeting(payload: MeetingPayload) -> dict:
