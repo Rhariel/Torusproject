@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard de Análise de Reuniões</title>
+    <style>
+        :root { --bg: #f5f1e8; --panel: #fffdf8; --ink: #1f2937; --muted: #6b7280; --line: #d8cfc2; --brand: #0f766e; --brand-soft: #dff5f2; --warn: #b45309; --danger: #b91c1c; --success: #166534; --shadow: 0 12px 30px rgba(31, 41, 55, 0.08); }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: radial-gradient(circle at top left, #efe3cc 0, transparent 35%), linear-gradient(135deg, #f5f1e8 0%, #f3f7f4 100%); color: var(--ink); }
+        .page { max-width: 1300px; margin: 0 auto; padding: 32px 20px 60px; }
+        .hero { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-bottom: 24px; }
+        .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; }
+        .hero-card { padding: 28px; }
+        h1, h2, h3 { margin: 0 0 12px; }
+        .hero p, .helper, .legend, .empty-state, .status { color: var(--muted); line-height: 1.5; }
+        .badge-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+        .badge { padding: 10px 14px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-weight: 600; font-size: 14px; }
+        .upload-box { display: flex; flex-direction: column; gap: 16px; }
+        label { font-weight: 600; font-size: 14px; }
+        input[type="file"], input[type="url"] { width: 100%; padding: 12px; border-radius: 14px; background: #fff; }
+        input[type="url"] { border: 1px solid var(--line); }
+        input[type="file"] { border: 1px dashed var(--line); }
+        button { border: none; border-radius: 14px; background: var(--brand); color: white; padding: 14px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+        button:hover { filter: brightness(1.05); }
+        button:disabled { opacity: 0.7; cursor: wait; }
+        .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .metric { padding: 20px; }
+        .metric span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+        .metric strong { font-size: 30px; }
+        .metric small { display: block; margin-top: 8px; color: var(--muted); }
+        .sections { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 20px; }
+        .section { padding: 22px; }
+        .bar-wrap { margin-top: 14px; }
+        .bar-label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+        .bar { width: 100%; height: 14px; background: #ece7dd; border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
+        .fill { height: 100%; border-radius: 999px; }
+        .fill-cliente { background: #0f766e; }
+        .fill-vendedor { background: #d97706; }
+        .fill-risco { background: linear-gradient(90deg, #16a34a, #f59e0b, #dc2626); }
+        .objection-list, .message-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+        .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-right: 8px; }
+        .pill-negative { background: #fee2e2; color: var(--danger); }
+        .pill-positive { background: #dcfce7; color: var(--success); }
+        .pill-neutral { background: #e5e7eb; color: #374151; }
+        .pill-intent { background: #e0f2fe; color: #075985; }
+        .message-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
+        .message-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .message-text { margin: 10px 0; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="hero">
+            <div class="panel hero-card">
+                <h1>Dashboard de Analise de Reunioes</h1>
+                <p>Envie um arquivo JSON com a transcricao da reuniao. O sistema analisa sentimento, intencao, risco de churn, objecoes e oportunidades de upsell.</p>
+                <div class="badge-row">
+                    <div class="badge">Entrada por arquivo JSON</div>
+                    <div class="badge">Analise consolidada</div>
+                    <div class="badge">Detalhe por mensagem</div>
+                </div>
+            </div>
+            <div class="panel upload-box">
+                <div>
+                    <label for="apiUrl">URL da API (Python Backend)</label>
+                    <input id="apiUrl" type="url" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" />
+                    <p class="helper">Onde o servidor Python está rodando no momento.</p>
+                </div>
+                <div>
+                    <label for="meetingFile">Arquivo da reuniao</label>
+                    <p class="helper">Use um JSON com `meeting_id` e `conversation`.</p>
+                </div>
+                <input id="meetingFile" type="file" accept=".json,application/json" />
+                <button id="analyzeButton">Analisar arquivo</button>
+                <div class="status" id="statusText">Aguardando envio de arquivo.</div>
+            </div>
+        </div>
+
+        <div id="results" style="display:none;">
+            <div class="grid">
+                <div class="panel metric">
+                    <span>Risco consolidado</span>
+                    <strong id="riskScore">0</strong>
+                    <small>Score final de 0 a 100</small>
+                </div>
+                <div class="panel metric">
+                    <span>Sentimento Global</span>
+                    <strong id="avgSentiment">0</strong>
+                    <small>Media das falas do cliente</small>
+                </div>
+                <div class="panel metric">
+                    <span>Mensagens Processadas</span>
+                    <strong id="churnSignals">0</strong>
+                    <small>Total de mensagens analisadas</small>
+                </div>
+                <div class="panel metric">
+                    <span>Total de Entidades</span>
+                    <strong id="upsellCount">0</strong>
+                    <small>Entidades identificadas no texto</small>
+                </div>
+            </div>
+
+            <div class="sections">
+                <div class="panel section">
+                    <h2>Metricas e Sinais</h2>
+                    <p class="legend">Resumo dos indicadores mais importantes da reuniao para uso gerencial.</p>
+                    <div class="bar-wrap">
+                        <div class="bar-label">
+                            <span>Participacao do cliente</span>
+                            <span id="clientShareLabel">0%</span>
+                        </div>
+                        <div class="bar"><div id="clientShareBar" class="fill fill-cliente" style="width:0%;"></div></div>
+                        <div class="bar-label">
+                            <span>Participacao do vendedor</span>
+                            <span id="sellerShareLabel">0%</span>
+                        </div>
+                        <div class="bar"><div id="sellerShareBar" class="fill fill-vendedor" style="width:0%;"></div></div>
+                        <div class="bar-label">
+                            <span>Risco consolidado</span>
+                            <span id="riskBarLabel">0%</span>
+                        </div>
+                        <div class="bar"><div id="riskBar" class="fill fill-risco" style="width:0%;"></div></div>
+                    </div>
+                    <h3>Objecoes encontradas</h3>
+                    <div id="objectionList" class="objection-list"></div>
+                </div>
+
+                <div class="panel section">
+                    <h2>Historico da Conversa</h2>
+                    <p class="legend">Cada card mostra quem falou, o texto analisado, a intencao detectada, o sentimento e os sinais relevantes.</p>
+                    <div id="messageList" class="message-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const analyzeButton = document.getElementById("analyzeButton");
+        const meetingFile = document.getElementById("meetingFile");
+        const apiUrlInput = document.getElementById("apiUrl");
+        const statusText = document.getElementById("statusText");
+        const results = document.getElementById("results");
+
+        function sentimentClass(label) {
+            if (label === "positive") return "pill-positive";
+            if (label === "negative") return "pill-negative";
+            return "pill-neutral";
+        }
+
+        function formatPercent(value) { return `${Math.round(value * 100)}%`; }
+
+        function renderDashboard(data) {
+            const summary = data.summary;
+            document.getElementById("riskScore").textContent = summary.churn_risk_score;
+            document.getElementById("avgSentiment").textContent = summary.average_customer_sentiment;
+            document.getElementById("churnSignals").textContent = data.message_analysis.length;
+
+            document.getElementById("clientShareLabel").textContent = formatPercent(summary.speech_ratio.cliente);
+            document.getElementById("sellerShareLabel").textContent = formatPercent(summary.speech_ratio.vendedor);
+            document.getElementById("riskBarLabel").textContent = `${summary.churn_risk_score}%`;
+            document.getElementById("clientShareBar").style.width = formatPercent(summary.speech_ratio.cliente);
+            document.getElementById("sellerShareBar").style.width = formatPercent(summary.speech_ratio.vendedor);
+            document.getElementById("riskBar").style.width = `${summary.churn_risk_score}%`;
+
+            const objContainer = document.getElementById("objectionList");
+            objContainer.innerHTML = "";
+            if (!summary.objections.length) {
+                objContainer.innerHTML = "<div class='legend'>Nenhuma objecao encontrada.</div>";
+            } else {
+                summary.objections.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "message-card";
+                    div.textContent = item;
+                    objContainer.appendChild(div);
+                });
+            }
+
+            const msgContainer = document.getElementById("messageList");
+            msgContainer.innerHTML = "";
+            let totalEntities = 0;
+
+            data.message_analysis.forEach((message, index) => {
+                totalEntities += message.entities.length;
+                const entities = message.entities.length
+                    ? message.entities.map(e => `${e.text} (${e.label})`).join(", ")
+                    : "Nenhuma entidade.";
+
+                const features = Object.entries(message.features)
+                    .filter(([k, v]) => typeof v === "boolean" && v)
+                    .map(([k]) => k).join(", ") || "Nenhum sinal especial.";
+
+                const card = document.createElement("div");
+                card.className = "message-card";
+                card.innerHTML = `
+                    <div class="message-head">
+                        <strong>Fala ${index + 1} - ${message.speaker}</strong>
+                        <div>
+                            <span class="pill pill-intent">${message.intent}</span>
+                            <span class="pill ${sentimentClass(message.sentiment.label)}">${message.sentiment.label}</span>
+                        </div>
+                    </div>
+                    <div class="message-text">${message.original_text}</div>
+                    <div class="legend"><strong>Entidades:</strong> ${entities}</div>
+                    <div class="legend"><strong>Sinais:</strong> ${features}</div>
+                `;
+                msgContainer.appendChild(card);
+            });
+
+            document.getElementById("upsellCount").textContent = totalEntities;
+            results.style.display = "block";
+        }
+
+        analyzeButton.addEventListener("click", async () => {
+            const file = meetingFile.files[0];
+            let apiUrl = apiUrlInput.value.trim().replace(/\/$/, "");
+            if (!file) {
+                statusText.textContent = "Selecione um arquivo JSON antes de analisar.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+            analyzeButton.disabled = true;
+            statusText.textContent = "Processando...";
+
+            try {
+                const response = await fetch(`${apiUrl}/analyze_meeting_file`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || "Falha ao analisar o arquivo.");
+
+                renderDashboard(data);
+                statusText.textContent = `Reuniao analisada com sucesso.`;
+            } catch (error) {
+                statusText.textContent = `Erro de conexao: ${error.message} (A API esta ligada e rodando na URL certa?)`;
+            } finally {
+                analyzeButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
