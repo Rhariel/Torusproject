@@ -1,0 +1,223 @@
+{
+  "meetings": 3,
+  "messages": 9,
+  "correct_messages": 7,
+  "validation_accuracy": 0.7778,
+  "results": [
+    {
+      "meeting_id": 201,
+      "scenario": "retenção",
+      "expected_intents": [
+        "neutral",
+        "churn_risk",
+        "price_objection"
+      ],
+      "predicted_intents": [
+        "churn_risk",
+        "churn_risk",
+        "price_objection"
+      ],
+      "matches": [
+        false,
+        true,
+        true
+      ],
+      "summary": {
+        "average_customer_sentiment": 0.31,
+        "sentiment_score": 31.25,
+        "churn_signals": 1,
+        "upsell_opportunities": 0,
+        "objections": [
+          "O valor está muito alto para nosso orçamento."
+        ],
+        "products_identified": [
+          "Protheus"
+        ],
+        "key_terms": [
+          {
+            "term": "revisar",
+            "count": 1
+          },
+          {
+            "term": "renovação",
+            "count": 1
+          },
+          {
+            "term": "contrato",
+            "count": 1
+          },
+          {
+            "term": "hoje",
+            "count": 1
+          },
+          {
+            "term": "pretendemos",
+            "count": 1
+          },
+          {
+            "term": "cancelar",
+            "count": 1
+          },
+          {
+            "term": "protheus",
+            "count": 1
+          },
+          {
+            "term": "próximo",
+            "count": 1
+          }
+        ],
+        "speech_ratio": {
+          "cliente": 0.68,
+          "vendedor": 0.32
+        },
+        "churn_risk_score": 72.0,
+        "opportunity_score": 8,
+        "recommended_action": "Abrir um plano de retenção e marcar contato executivo em até 24 horas.",
+        "model_used": "logistic_regression"
+      }
+    },
+    {
+      "meeting_id": 202,
+      "scenario": "expansão",
+      "expected_intents": [
+        "neutral",
+        "upsell_opportunity",
+        "satisfaction"
+      ],
+      "predicted_intents": [
+        "churn_risk",
+        "upsell_opportunity",
+        "satisfaction"
+      ],
+      "matches": [
+        false,
+        true,
+        true
+      ],
+      "summary": {
+        "average_customer_sentiment": 0.69,
+        "sentiment_score": 68.75,
+        "churn_signals": 0,
+        "upsell_opportunities": 1,
+        "objections": [],
+        "products_identified": [
+          "Fluig"
+        ],
+        "key_terms": [
+          {
+            "term": "quais",
+            "count": 1
+          },
+          {
+            "term": "são",
+            "count": 1
+          },
+          {
+            "term": "planos",
+            "count": 1
+          },
+          {
+            "term": "equipe",
+            "count": 1
+          },
+          {
+            "term": "próximo",
+            "count": 1
+          },
+          {
+            "term": "trimestre",
+            "count": 1
+          },
+          {
+            "term": "queremos",
+            "count": 1
+          },
+          {
+            "term": "expandir",
+            "count": 1
+          }
+        ],
+        "speech_ratio": {
+          "cliente": 0.57,
+          "vendedor": 0.43
+        },
+        "churn_risk_score": 0.0,
+        "opportunity_score": 53.0,
+        "recommended_action": "Preparar uma proposta de expansão alinhada aos módulos citados.",
+        "model_used": "logistic_regression"
+      }
+    },
+    {
+      "meeting_id": 203,
+      "scenario": "acompanhamento",
+      "expected_intents": [
+        "neutral",
+        "neutral",
+        "satisfaction"
+      ],
+      "predicted_intents": [
+        "neutral",
+        "neutral",
+        "satisfaction"
+      ],
+      "matches": [
+        true,
+        true,
+        true
+      ],
+      "summary": {
+        "average_customer_sentiment": 0.5,
+        "sentiment_score": 50.0,
+        "churn_signals": 0,
+        "upsell_opportunities": 0,
+        "objections": [],
+        "products_identified": [
+          "RM"
+        ],
+        "key_terms": [
+          {
+            "term": "reunião",
+            "count": 1
+          },
+          {
+            "term": "foi",
+            "count": 1
+          },
+          {
+            "term": "marcada",
+            "count": 1
+          },
+          {
+            "term": "segunda",
+            "count": 1
+          },
+          {
+            "term": "feira",
+            "count": 1
+          },
+          {
+            "term": "equipe",
+            "count": 1
+          },
+          {
+            "term": "utiliza",
+            "count": 1
+          },
+          {
+            "term": "todos",
+            "count": 1
+          }
+        ],
+        "speech_ratio": {
+          "cliente": 0.71,
+          "vendedor": 0.29
+        },
+        "churn_risk_score": 0.0,
+        "opportunity_score": 8,
+        "recommended_action": "Registrar os próximos passos e manter o acompanhamento normal.",
+        "model_used": "logistic_regression"
+      }
+    }
+  ]
+}

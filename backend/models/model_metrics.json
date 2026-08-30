@@ -1,0 +1,319 @@
+{
+  "dataset": "data/training_examples.csv",
+  "dataset_size": 100,
+  "train_size": 75,
+  "test_size": 25,
+  "random_state": 42,
+  "labels": [
+    "churn_risk",
+    "neutral",
+    "price_objection",
+    "satisfaction",
+    "upsell_opportunity"
+  ],
+  "class_distribution": {
+    "churn_risk": 20,
+    "neutral": 20,
+    "price_objection": 20,
+    "satisfaction": 20,
+    "upsell_opportunity": 20
+  },
+  "models": {
+    "logistic_regression": {
+      "accuracy": 0.48,
+      "precision_macro": 0.5022,
+      "recall_macro": 0.48,
+      "f1_macro": 0.472,
+      "confusion_matrix": [
+        [
+          2,
+          1,
+          0,
+          1,
+          1
+        ],
+        [
+          0,
+          4,
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          2,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          2,
+          1
+        ],
+        [
+          0,
+          0,
+          2,
+          1,
+          2
+        ]
+      ],
+      "per_class": {
+        "churn_risk": {
+          "precision": 0.6667,
+          "recall": 0.4,
+          "f1": 0.5,
+          "support": 5
+        },
+        "neutral": {
+          "precision": 0.4444,
+          "recall": 0.8,
+          "f1": 0.5714,
+          "support": 5
+        },
+        "price_objection": {
+          "precision": 0.5,
+          "recall": 0.4,
+          "f1": 0.4444,
+          "support": 5
+        },
+        "satisfaction": {
+          "precision": 0.5,
+          "recall": 0.4,
+          "f1": 0.4444,
+          "support": 5
+        },
+        "upsell_opportunity": {
+          "precision": 0.4,
+          "recall": 0.4,
+          "f1": 0.4,
+          "support": 5
+        }
+      },
+      "errors": [
+        {
+          "text": "O investimento não compensa para uma equipe pequena.",
+          "expected": "price_objection",
+          "predicted": "neutral"
+        },
+        {
+          "text": "A nova unidade também precisa usar a plataforma.",
+          "expected": "upsell_opportunity",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "Tivemos muitos problemas e vamos sair.",
+          "expected": "churn_risk",
+          "predicted": "neutral"
+        },
+        {
+          "text": "Não temos verba para contratar agora.",
+          "expected": "price_objection",
+          "predicted": "neutral"
+        },
+        {
+          "text": "Quais opções existem para expandir nossa conta?",
+          "expected": "upsell_opportunity",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "A equipe está bem satisfeita com o Fluig.",
+          "expected": "satisfaction",
+          "predicted": "neutral"
+        },
+        {
+          "text": "Precisamos negociar o reajuste do contrato.",
+          "expected": "price_objection",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "Estamos interessados em aumentar o escopo do contrato.",
+          "expected": "upsell_opportunity",
+          "predicted": "satisfaction"
+        },
+        {
+          "text": "Essa experiência foi péssima e não quero mais usar.",
+          "expected": "churn_risk",
+          "predicted": "satisfaction"
+        },
+        {
+          "text": "Gostei muito da nova funcionalidade.",
+          "expected": "satisfaction",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Nossa operação possui três filiais.",
+          "expected": "neutral",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "O diretor pediu para migrarmos para outro sistema.",
+          "expected": "churn_risk",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Tudo está rodando bem depois da atualização.",
+          "expected": "satisfaction",
+          "predicted": "neutral"
+        }
+      ]
+    },
+    "multinomial_naive_bayes": {
+      "accuracy": 0.4,
+      "precision_macro": 0.4429,
+      "recall_macro": 0.4,
+      "f1_macro": 0.3965,
+      "confusion_matrix": [
+        [
+          2,
+          0,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          2,
+          0,
+          1
+        ],
+        [
+          2,
+          0,
+          2,
+          0,
+          1
+        ],
+        [
+          1,
+          1,
+          0,
+          2,
+          1
+        ],
+        [
+          1,
+          0,
+          1,
+          0,
+          3
+        ]
+      ],
+      "per_class": {
+        "churn_risk": {
+          "precision": 0.2857,
+          "recall": 0.4,
+          "f1": 0.3333,
+          "support": 5
+        },
+        "neutral": {
+          "precision": 0.5,
+          "recall": 0.2,
+          "f1": 0.2857,
+          "support": 5
+        },
+        "price_objection": {
+          "precision": 0.3333,
+          "recall": 0.4,
+          "f1": 0.3636,
+          "support": 5
+        },
+        "satisfaction": {
+          "precision": 0.6667,
+          "recall": 0.4,
+          "f1": 0.5,
+          "support": 5
+        },
+        "upsell_opportunity": {
+          "precision": 0.4286,
+          "recall": 0.6,
+          "f1": 0.5,
+          "support": 5
+        }
+      },
+      "errors": [
+        {
+          "text": "Podem cancelar todas as licenças da conta.",
+          "expected": "churn_risk",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "A empresa cresceu e precisamos ampliar as licenças.",
+          "expected": "upsell_opportunity",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "A próxima reunião ficou marcada para segunda.",
+          "expected": "neutral",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "O investimento não compensa para uma equipe pequena.",
+          "expected": "price_objection",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Não temos verba para contratar agora.",
+          "expected": "price_objection",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "Precisamos negociar o reajuste do contrato.",
+          "expected": "price_objection",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "Podemos agendar uma demonstração para amanhã?",
+          "expected": "neutral",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Estamos interessados em aumentar o escopo do contrato.",
+          "expected": "upsell_opportunity",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "Essa experiência foi péssima e não quero mais usar.",
+          "expected": "churn_risk",
+          "predicted": "satisfaction"
+        },
+        {
+          "text": "Valeu a pena investir nessa melhoria.",
+          "expected": "satisfaction",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "A versão atual foi instalada no mês passado.",
+          "expected": "neutral",
+          "predicted": "churn_risk"
+        },
+        {
+          "text": "Gostei muito da nova funcionalidade.",
+          "expected": "satisfaction",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Nossa operação possui três filiais.",
+          "expected": "neutral",
+          "predicted": "price_objection"
+        },
+        {
+          "text": "O diretor pediu para migrarmos para outro sistema.",
+          "expected": "churn_risk",
+          "predicted": "upsell_opportunity"
+        },
+        {
+          "text": "Tudo está rodando bem depois da atualização.",
+          "expected": "satisfaction",
+          "predicted": "neutral"
+        }
+      ]
+    }
+  },
+  "selected_model": "logistic_regression",
+  "selection_rationale": "Maior recall macro; em caso de empate, F1 macro e accuracy."
+}
