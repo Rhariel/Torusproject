@@ -7,3 +7,4 @@ __pycache__/
 *.db-journal
 backend/runtime/*.db
 backend/runtime/*.pid
+backend/runtime/py312-packages/

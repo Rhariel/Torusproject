@@ -136,6 +136,9 @@ def init_db() -> None:
         _ensure_column(
             connection, "analyses", "seller_id", "INTEGER REFERENCES users(id)"
         )
+        from app.crm import migrate
+
+        migrate(connection)
         for name, email, password, role in DEMO_USERS:
             connection.execute(
                 """
@@ -144,6 +147,9 @@ def init_db() -> None:
                 """,
                 (name, email, _hash_password(password), role),
             )
+        from app.organizational_schema import migrate as migrate_organizational
+
+        migrate_organizational(connection)
         connection.execute(
             "DELETE FROM sessions WHERE expires_at <= ?",
             (datetime.now(timezone.utc).isoformat(),),
@@ -251,12 +257,22 @@ def save_meeting(
     title = str(payload.get("title") or f"Reunião {payload.get('meeting_id')}").strip()
     customer_name = str(payload.get("customer_name") or "Cliente não informado").strip()
     with get_connection() as connection:
+        customer_id = payload.get("customer_id")
+        if customer_id is None:
+            connection.execute(
+                "INSERT OR IGNORE INTO customers (name,seller_id) VALUES (?,?)",
+                (customer_name, seller_id),
+            )
+            customer_id = connection.execute(
+                "SELECT id FROM customers WHERE name=? COLLATE NOCASE AND seller_id=?",
+                (customer_name, seller_id),
+            ).fetchone()["id"]
         cursor = connection.execute(
             """
             INSERT INTO meetings (
                 external_id, seller_id, created_by, title, customer_name,
-                summary_json, transcript_json, analysis_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                summary_json, transcript_json, analysis_json, customer_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 int(payload["meeting_id"]),
@@ -267,6 +283,7 @@ def save_meeting(
                 json.dumps(analysis["summary"], ensure_ascii=False),
                 json.dumps(payload["conversation"], ensure_ascii=False),
                 json.dumps(analysis, ensure_ascii=False),
+                customer_id,
             ),
         )
         record_id = int(cursor.lastrowid)
@@ -295,6 +312,7 @@ def _meeting_list_item(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "id": int(row["id"]),
         "meeting_id": int(row["external_id"]),
+        "customer_id": row["customer_id"],
         "title": row["title"],
         "customer_name": row["customer_name"],
         "created_at": row["created_at"],
@@ -356,3 +374,58 @@ def save_message_analysis(
             (text, intent, sentiment, int(churn_signal)),
         )
         connection.commit()
+
+
+def list_users() -> list[dict[str, Any]]:
+    with get_connection() as connection:
+        rows = connection.execute("SELECT * FROM users ORDER BY name").fetchall()
+    return [{**public_user(row), "active": bool(row["active"])} for row in rows]
+
+
+def create_user(name: str, email: str, password: str, role: str) -> int:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
+            (name, email.lower(), _hash_password(password), role),
+        )
+        connection.commit()
+        return int(cursor.lastrowid)
+
+
+def set_user_active(user_id: int, active: bool) -> bool:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE users SET active=? WHERE id=?", (int(active), user_id)
+        )
+        if not active:
+            connection.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        connection.commit()
+        return cursor.rowcount > 0
+
+
+def change_password(user_id: int, current_password: str, new_password: str) -> bool:
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT password_hash FROM users WHERE id=? AND active=1", (user_id,)
+        ).fetchone()
+        if row is None or not _verify_password(current_password, row["password_hash"]):
+            return False
+        connection.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (_hash_password(new_password), user_id),
+        )
+        connection.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        connection.commit()
+    return True
+
+
+def rename_meeting(record_id: int, title: str, user: dict[str, Any]) -> bool:
+    query = "UPDATE meetings SET title=? WHERE id=?"
+    parameters: list[Any] = [title, record_id]
+    if user["role"] != "manager":
+        query += " AND seller_id=?"
+        parameters.append(user["id"])
+    with get_connection() as connection:
+        cursor = connection.execute(query, parameters)
+        connection.commit()
+        return cursor.rowcount > 0

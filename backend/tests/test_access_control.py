@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +11,7 @@ from app.api import app
 
 class AuthAccessTests(unittest.TestCase):
     def setUp(self):
+        self.original_db_path = storage.DB_PATH
         self.temp_directory = tempfile.TemporaryDirectory()
         storage.DB_PATH = Path(self.temp_directory.name) / "test_meetings.db"
         self.client_context = TestClient(app)
@@ -17,6 +19,7 @@ class AuthAccessTests(unittest.TestCase):
 
     def tearDown(self):
         self.client_context.__exit__(None, None, None)
+        storage.DB_PATH = self.original_db_path
         self.temp_directory.cleanup()
 
     def login(self, email, password):
@@ -129,6 +132,21 @@ class AuthAccessTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["access-control-allow-origin"], "null")
+
+    def test_health_rejects_missing_or_unreadable_model(self):
+        with patch("app.api.load_model", return_value=None):
+            self.assertEqual(self.client.get("/health").status_code, 503)
+        with patch("app.api.load_model", side_effect=ValueError("invalid JSON")):
+            self.assertEqual(self.client.get("/health").status_code, 503)
+
+    def test_model_metadata_requires_login(self):
+        self.assertEqual(self.client.get("/model_metrics").status_code, 401)
+        token = self.login("ana@torus.ai", "Vendas@2026")
+        response = self.client.get("/model_metrics", headers=self.headers(token))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["model_type"], "logistic_regression")
+        self.assertIn("evaluation_summary", response.json())
+        self.assertNotIn("models", response.json())
 
     def test_empty_meeting_is_rejected(self):
         token = self.login("ana@torus.ai", "Vendas@2026")

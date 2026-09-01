@@ -4,6 +4,8 @@ O Torus recebe a transcrição de uma reunião em JSON e classifica cada fala co
 
 O acesso é separado por perfil: vendedores consultam somente as próprias reuniões, enquanto gerentes visualizam a equipe inteira e podem atribuir novas análises a um vendedor.
 
+Na versão 1.1, o acompanhamento inclui clientes cadastrados, histórico por cliente, tarefas com prazo e prioridade, gestão de acessos e relatórios. A classificação continua local, sem LLM.
+
 ## Recursos principais
 
 - login com sessão temporária e senhas protegidas por PBKDF2;
@@ -12,23 +14,29 @@ O acesso é separado por perfil: vendedores consultam somente as próprias reuni
 - classificação de intenção em cinco categorias comerciais;
 - indicadores de churn, oportunidade, sentimento e participação na conversa;
 - histórico persistido em SQLite;
-- comparação reproduzível entre Regressão Logística e Naive Bayes;
+- quatro tabelas organizacionais exigidas e a `tb_tarefa`, sincronizadas com o banco operacional;
+- cadastro e edição de clientes, com etapa do atendimento e anotações;
+- tarefas pendentes, em atraso ou concluídas, vinculadas ao cliente e à reunião;
+- cadastro e desativação de usuários pelo gerente, com confirmação de senha;
+- troca de senha, que encerra todas as sessões da conta;
+- detalhamento dos pontos nas novas análises e comparação dos registros do cliente;
+- exportação CSV e relatório por reunião para imprimir ou salvar em PDF;
 - validação automatizada da API, das permissões e do pipeline analítico.
 
-O projeto não envia transcrições para serviços externos e não depende de LLM. O classificador executado localmente é uma Regressão Logística treinada com a base disponível em `backend/data`.
+O projeto não envia transcrições para serviços externos e não depende de LLM. O classificador executado localmente é uma Regressão Logística, com pesos em `backend/models/intent_classifier.json`. A entrada já deve estar transcrita; não há captura ou transcrição de áudio.
 
 ## Organização
 
 ```text
 Torusproject/
-├── index.html                  # interface web
+├── frontend/                   # HTML, CSS e JavaScript da interface
 ├── README.md                   # visão geral e execução
+├── docs/                       # documentação do produto em Markdown e PDF
+├── scripts/                    # iniciar e encerrar o servidor
 └── backend/
     ├── app/                    # API, autenticação e análise
-    ├── data/                   # treino e validação
-    ├── docs/                   # metodologia e resultados
     ├── examples/               # reunião de exemplo
-    ├── models/                 # modelo e métricas versionadas
+    ├── models/                 # modelo de execução e metadados
     ├── runtime/                # banco local, ignorado pelo Git
     ├── tests/                  # testes automatizados
     └── pyproject.toml          # dependências e ferramentas
@@ -36,7 +44,7 @@ Torusproject/
 
 ## Como abrir no Windows
 
-Dê dois cliques em `INICIAR_TORUS.cmd`. O inicializador mantém a API ativa em segundo plano e abre `http://127.0.0.1:8000` no navegador. Para encerrar, use `ENCERRAR_TORUS.cmd`.
+Com uv disponível no PATH e Python 3.10 ou superior, dê dois cliques em `INICIAR_TORUS.cmd`. O inicializador mantém a API ativa em segundo plano e abre `http://127.0.0.1:8000` no navegador. Para encerrar, use `ENCERRAR_TORUS.cmd`. Fechar a página não encerra o servidor.
 
 Na primeira execução, o uv pode levar alguns segundos para preparar as dependências.
 
@@ -60,26 +68,31 @@ Abra `http://127.0.0.1:8000`. A documentação interativa da API fica em `http:/
 | Vendedora | `ana@torus.ai` | `Vendas@2026` |
 | Vendedor | `carlos@torus.ai` | `Vendas@2026` |
 
-Essas contas existem somente para demonstração. Em uma implantação real, substitua-as por usuários cadastrados e use HTTPS.
+Essas contas têm senhas públicas e existem somente para demonstração local. A configuração atual não deve ser exposta à internet. Reiniciar não apaga o histórico nem redefine senhas de usuários já existentes.
 
-## Modelo e validação
+## Documentação
 
-Os artefatos prontos estão em `backend/models`. Para reproduzir o treinamento e a validação:
+- [Documentação completa](docs/DOCUMENTACAO_TORUS.md): instalação, uso dos perfis, arquitetura, entrada, API, modelo, indicadores, segurança e manutenção.
+- [Versão em PDF](docs/DOCUMENTACAO_TORUS.pdf): mesmo conteúdo para leitura e compartilhamento.
+- Exemplo de transcrição: `backend/examples/sample_meeting.json`.
+- [Decisões de interface e escrita](docs/DECISOES_DE_INTERFACE.md): critérios, exemplos e fontes consultadas.
+- [Esquema do banco](docs/ESQUEMA_BANCO.md): tabelas exigidas, relacionamentos e correspondência com a aplicação.
+
+O banco fica em `backend/runtime/torus.db`, fora do versionamento. Não apague esse arquivo para atualizar a aplicação.
+
+Clientes são vinculados às reuniões antigas automaticamente na inicialização. A migração é repetível e não remove reuniões. Antes de atualizar um banco existente, faça uma cópia de segurança. O responsável é definido no cadastro do cliente e não pode ser transferido pela interface atual.
+
+Para usar: cadastre o cliente em **Clientes**, selecione-o em **Analisar reunião** e envie a transcrição. Abra a análise e use **Criar tarefa de acompanhamento** para registrar o próximo contato. Não há envio automático de mensagens ou e-mails.
+
+## Verificação
+
+Para executar os 28 testes e a verificação do código, dentro de `backend`:
 
 ```powershell
-uv run python -m app.model_training
-uv run python -m app.model_validation
-```
-
-O treinamento usa divisão estratificada e semente fixa. Os relatórios resultantes ficam em `backend/docs`.
-
-Para executar a verificação completa:
-
-```powershell
-uv run python -m unittest discover -s tests -v
-uv run ruff check .
+uv run --extra dev python -m unittest discover -s tests -v
+uv run --extra dev ruff check .
 ```
 
 ## Limites atuais
 
-A base possui 100 frases sintéticas e serve como ponto de partida. A acurácia de teste do modelo selecionado é 48%, portanto os resultados não devem orientar decisões contratuais sem revisão humana. Antes de uso real, é necessário treinar com transcrições anonimizadas, separar a avaliação por cliente e período e calibrar os limites dos indicadores.
+O modelo foi avaliado em 25 frases sintéticas, com 48% de acurácia. Os indicadores combinam previsões com regras fixas e não representam probabilidades calibradas de cancelamento ou venda. Confira as falas antes de tomar uma decisão sobre o cliente.

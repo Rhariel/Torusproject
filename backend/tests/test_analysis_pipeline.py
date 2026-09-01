@@ -1,8 +1,14 @@
+import hashlib
 import json
 import unittest
 from pathlib import Path
 
-from app.intent_classifier import get_model_evaluation, predict_intent
+from app.intent_classifier import (
+    MODEL_PATH,
+    get_model_metadata,
+    load_model,
+    predict_intent,
+)
 from app.meeting_analysis import analyze_meeting
 from app.text_processing import process_text
 
@@ -10,12 +16,16 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 class PipelineTests(unittest.TestCase):
-    def test_training_artifacts_match_the_dataset(self):
-        evaluation = get_model_evaluation()
+    def test_runtime_model_matches_metadata(self):
+        metadata = get_model_metadata()
+        model = load_model()
 
-        self.assertEqual(evaluation["dataset_size"], 100)
-        self.assertEqual(evaluation["selected_model"], "logistic_regression")
-        self.assertIn(evaluation["selected_model"], evaluation["models"])
+        self.assertIsNotNone(model)
+        self.assertEqual(model["model_type"], metadata["model_type"])
+        self.assertEqual(model["labels"], metadata["labels"])
+        self.assertEqual(
+            hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest(), metadata["sha256"]
+        )
 
     def test_examples_from_each_class(self):
         examples = {

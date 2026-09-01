@@ -8,11 +8,16 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.intent_classifier import get_model_evaluation
+from app.access import current_user, extract_token, manager_user, seller_for_user
+from app.crm_routes import require_customer
+from app.crm_routes import router as crm_router
+from app.intent_classifier import get_model_metadata, load_model
 from app.meeting_analysis import analyze_meeting
 from app.storage import (
     authenticate_user,
@@ -21,7 +26,6 @@ from app.storage import (
     delete_session,
     get_meeting,
     get_user,
-    get_user_by_token,
     init_db,
     list_meetings,
     list_sellers,
@@ -31,13 +35,11 @@ from app.storage import (
 from app.text_processing import process_text
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-INDEX_PATH = PROJECT_ROOT / "index.html"
+INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
 MAX_UPLOAD_BYTES = 1_000_000
 
 
 class LoginPayload(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
     email: str = Field(..., min_length=3, max_length=254)
     password: str = Field(..., min_length=1, max_length=256)
 
@@ -58,48 +60,19 @@ class MeetingPayload(BaseModel):
     title: str | None = Field(default=None, max_length=120)
     customer_name: str | None = Field(default=None, max_length=120)
     seller_id: int | None = None
+    customer_id: int | None = None
     conversation: list[MessagePayload] = Field(..., min_length=1)
-
-
-def _extract_token(authorization: str | None) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Sessão inválida ou expirada.")
-    return authorization.removeprefix("Bearer ").strip()
-
-
-def current_user(
-    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-) -> dict[str, Any]:
-    token = _extract_token(authorization)
-    user = get_user_by_token(token)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Sessão inválida ou expirada.")
-    return user
-
-
-def manager_user(
-    user: Annotated[dict[str, Any], Depends(current_user)],
-) -> dict[str, Any]:
-    if user["role"] != "manager":
-        raise HTTPException(status_code=403, detail="Acesso exclusivo para gerentes.")
-    return user
-
-
-def _resolve_seller(user: dict[str, Any], requested_seller_id: int | None) -> int:
-    if user["role"] == "seller":
-        return int(user["id"])
-    if requested_seller_id is None:
-        raise HTTPException(status_code=422, detail="Selecione o vendedor responsável.")
-    seller = get_user(requested_seller_id)
-    if seller is None or seller["role"] != "seller":
-        raise HTTPException(status_code=422, detail="Vendedor responsável inválido.")
-    return requested_seller_id
 
 
 def _analyze_and_save(
     payload: dict[str, Any], user: dict[str, Any], requested_seller_id: int | None
 ) -> dict[str, Any]:
-    seller_id = _resolve_seller(user, requested_seller_id)
+    if payload.get("customer_id") is not None:
+        customer = require_customer(payload["customer_id"], user)
+        seller_id = customer["seller_id"]
+        payload["customer_name"] = customer["name"]
+    else:
+        seller_id = seller_for_user(user, requested_seller_id)
     result = analyze_meeting(payload)
     record_id = save_meeting(
         payload=payload,
@@ -204,7 +177,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Torus Meeting Intelligence",
-    version="1.0.0",
+    version="1.1.0",
     description="Análise de reuniões comerciais para vendedores e gerentes.",
     lifespan=lifespan,
 )
@@ -213,9 +186,46 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000", "null"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+app.mount("/assets", StaticFiles(directory=PROJECT_ROOT / "frontend"), name="assets")
+app.include_router(crm_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc):
+    labels = {
+        "name": "Nome",
+        "email": "E-mail",
+        "password": "Senha inicial",
+        "new_password": "Nova senha",
+        "current_password": "Senha atual",
+        "title": "Título",
+        "due_date": "Prazo",
+        "customer_id": "Cliente",
+        "conversation": "Falas da reunião",
+        "text": "Texto da fala",
+    }
+    messages = []
+    for error in exc.errors():
+        field = labels.get(str(error["loc"][-1]), "Campo informado")
+        kind = error["type"]
+        context = error.get("ctx", {})
+        if kind == "string_too_short":
+            message = f"{field}: use pelo menos {context['min_length']} caracteres."
+        elif kind == "string_too_long":
+            message = f"{field}: use no máximo {context['max_length']} caracteres."
+        elif kind == "value_error":
+            message = str(context.get("error", "Confira o valor informado."))
+        elif kind == "missing":
+            message = f"{field}: preencha este campo."
+        else:
+            message = f"{field}: confira o formato ou a opção selecionada."
+        if message not in messages:
+            messages.append(message)
+    return JSONResponse(status_code=422, content={"detail": " ".join(messages)})
 
 
 @app.get("/", response_class=HTMLResponse, tags=["Dashboard"])
@@ -227,11 +237,13 @@ def dashboard() -> str:
 
 @app.get("/health", tags=["Saúde"])
 def healthcheck() -> dict[str, str]:
-    evaluation = get_model_evaluation()
-    return {
-        "status": "ok",
-        "model": str(evaluation.get("selected_model", "not_trained")),
-    }
+    try:
+        model = load_model()
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Modelo indisponível.") from exc
+    if not isinstance(model, dict) or model.get("model_type") != "logistic_regression":
+        raise HTTPException(status_code=503, detail="Modelo indisponível.")
+    return {"status": "ok", "model": model["model_type"]}
 
 
 @app.post("/auth/login", tags=["Autenticação"])
@@ -255,7 +267,7 @@ def auth_me(user: Annotated[dict[str, Any], Depends(current_user)]) -> dict[str,
 def logout(
     authorization: Annotated[str | None, Header(alias="Authorization")] = None,
 ) -> dict[str, bool]:
-    token = _extract_token(authorization)
+    token = extract_token(authorization)
     delete_session(token)
     return {"logged_out": True}
 
@@ -289,7 +301,7 @@ def meeting_detail(
 def model_metrics(
     _: Annotated[dict[str, Any], Depends(current_user)],
 ) -> dict[str, Any]:
-    return get_model_evaluation()
+    return get_model_metadata()
 
 
 @app.post("/analyze", tags=["Análise"])
@@ -323,6 +335,7 @@ async def analyze_meeting_file(
     seller_id: Annotated[int | None, Form()] = None,
     title: Annotated[str | None, Form()] = None,
     customer_name: Annotated[str | None, Form()] = None,
+    customer_id: Annotated[int | None, Form()] = None,
 ) -> dict[str, Any]:
     if not (file.filename or "").lower().endswith(".json"):
         raise HTTPException(status_code=400, detail="Envie um arquivo JSON válido.")
@@ -334,12 +347,16 @@ async def analyze_meeting_file(
                 detail="O arquivo excede o limite de 1 MB.",
             )
         raw_payload = json.loads(file_content.decode("utf-8"))
+        if not isinstance(raw_payload, dict):
+            raise TypeError("A transcrição deve ser um objeto JSON.")
         if title:
             raw_payload["title"] = title
         if customer_name:
             raw_payload["customer_name"] = customer_name
         if seller_id is not None:
             raw_payload["seller_id"] = seller_id
+        if customer_id is not None:
+            raw_payload["customer_id"] = customer_id
         payload = MeetingPayload(**raw_payload)
     except (
         UnicodeDecodeError,

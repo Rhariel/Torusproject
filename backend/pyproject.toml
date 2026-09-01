@@ -1,6 +1,6 @@
 [project]
 name = "torus-meeting-intelligence"
-version = "1.0.0"
+version = "1.1.0"
 description = "Análise de reuniões comerciais com classificação de intenção e acesso por perfil."
 requires-python = ">=3.10"
 dependencies = [

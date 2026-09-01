@@ -15,7 +15,7 @@ from typing import Any
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = BACKEND_ROOT / "models"
 MODEL_PATH = MODEL_DIR / "intent_classifier.json"
-EVALUATION_PATH = MODEL_DIR / "model_metrics.json"
+METADATA_PATH = MODEL_DIR / "model_metadata.json"
 
 
 def normalize_text(text: str) -> str:
@@ -75,23 +75,6 @@ def _logistic_probabilities(
     return _softmax(scores)
 
 
-def _naive_bayes_probabilities(
-    model: dict[str, Any],
-    text: str,
-) -> dict[str, float]:
-    counts = text_features(text)
-    scores = {}
-    for label in model["labels"]:
-        likelihoods = model["log_likelihoods"][label]
-        unknown_likelihood = float(model["unknown_log_likelihood"][label])
-        evidence = sum(
-            count * float(likelihoods.get(feature, unknown_likelihood))
-            for feature, count in counts.items()
-        )
-        scores[label] = float(model["log_priors"][label]) + evidence
-    return _softmax(scores)
-
-
 def predict_probabilities(
     model: dict[str, Any],
     text: str,
@@ -99,8 +82,6 @@ def predict_probabilities(
     model_type = model.get("model_type")
     if model_type == "logistic_regression":
         return _logistic_probabilities(model, text)
-    if model_type == "multinomial_naive_bayes":
-        return _naive_bayes_probabilities(model, text)
     raise ValueError(f"Tipo de modelo não reconhecido: {model_type!r}")
 
 
@@ -115,8 +96,8 @@ def predict_intent(text: str) -> dict[str, Any]:
     model = load_model()
     if model is None:
         raise RuntimeError(
-            "Modelo não encontrado. Execute 'python -m app.model_training' "
-            "antes da inferência."
+            "Modelo não encontrado. Restaure backend/models/intent_classifier.json "
+            "a partir de uma cópia íntegra do projeto e reinicie o servidor."
         )
 
     if not normalize_text(text):
@@ -139,13 +120,8 @@ def predict_intent(text: str) -> dict[str, Any]:
     }
 
 
-def get_model_evaluation() -> dict[str, Any]:
-    if not EVALUATION_PATH.exists():
-        return {
-            "status": "not_trained",
-            "message": "Execute 'python -m app.model_training' para gerar a avaliação.",
-        }
-    return json.loads(EVALUATION_PATH.read_text(encoding="utf-8"))
+def get_model_metadata() -> dict[str, Any]:
+    return json.loads(METADATA_PATH.read_text(encoding="utf-8"))
 
 
 def clear_model_cache() -> None:

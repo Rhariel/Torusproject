@@ -172,6 +172,29 @@ def analyze_meeting(meeting: dict[str, Any]) -> dict[str, Any]:
     return {
         "meeting_id": meeting.get("meeting_id"),
         "summary": {
+            "score_explanation": {
+                "churn": {
+                    "intent_points": round(
+                        sum(churn_confidences) * CHURN_CONFIDENCE_WEIGHT, 2
+                    ),
+                    "price_points": len(objections) * PRICE_OBJECTION_WEIGHT,
+                    "sentiment_points": round(
+                        negative_sentiment * NEGATIVE_SENTIMENT_WEIGHT, 2
+                    ),
+                },
+                "opportunity": {
+                    "intent_points": round(
+                        sum(upsell_confidences) * UPSELL_CONFIDENCE_WEIGHT, 2
+                    ),
+                    "product_points": len(products) * PRODUCT_MENTION_WEIGHT,
+                },
+                "customer_speeches": len(customer_sentiments),
+                "limit": 100,
+                "note": (
+                    "Os pontos seguem regras fixas e não são probabilidades. "
+                    "Produtos de qualquer participante contam para oportunidade."
+                ),
+            },
             "average_customer_sentiment": round(average_sentiment, 2),
             "sentiment_score": sentiment_score,
             "churn_signals": len(churn_confidences),

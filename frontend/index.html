@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#252525">
+  <title>Torus | Reuniões e acompanhamento comercial</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2331cc9c'/%3E%3Cpath d='M17 17h30v9H37v22H27V26H17z' fill='%23252525'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/styles.css?v=1.1-login-3">
+  <script src="/assets/app.js?v=1.1" defer></script>
+</head>
+<body>
+  <section id="loginView" class="login-layout">
+    <div class="login-story">
+      <a class="brand" href="/" aria-label="Torus, página inicial"><span class="brand-mark" aria-hidden="true">T</span><span>TORUS</span></a>
+      <div class="login-copy">
+        <p class="eyebrow">Análise de reuniões comerciais</p>
+        <h1>Encontre riscos de renovação antes do próximo contato.</h1>
+        <p>O Torus lê a transcrição, classifica cada fala e reúne os sinais que importam para a conta: cancelamento, objeção de preço, satisfação, expansão e produtos TOTVS citados.</p>
+      </div>
+      <div class="login-proof">
+        <div><strong>5 intenções</strong>Churn, preço, expansão, satisfação e conversa neutra</div>
+        <div><strong>3 indicadores</strong>Risco, oportunidade e sentimento do cliente</div>
+        <div><strong>2 visões</strong>Carteira individual para vendas e equipe completa para gestão</div>
+      </div>
+    </div>
+    <div class="login-panel">
+      <form id="loginForm" class="login-card">
+        <p class="eyebrow">Torus Meeting Intelligence</p>
+        <h2>Acesse sua carteira analisada</h2>
+        <p class="login-description">Entre como vendedor para acompanhar suas contas ou como gerente para comparar toda a equipe comercial.</p>
+        <div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" required autocomplete="username" placeholder="nome@torus.ai"></div>
+        <div class="field"><label for="password">Senha</label><div class="password-wrap"><input id="password" name="password" type="password" required autocomplete="current-password"><button id="showPassword" class="show-password" type="button" aria-label="Mostrar senha">Mostrar</button></div></div>
+        <button id="loginButton" class="primary full" type="submit">Abrir painel de reuniões</button>
+        <p id="loginError" class="error form-error" role="alert"></p>
+        <div class="demo-box">
+          <h3>Escolha um perfil de teste</h3>
+          <div class="demo-grid">
+            <button class="demo-user" type="button" data-demo="manager"><strong>Gerente · equipe</strong><span>manager@torus.ai</span></button>
+            <button class="demo-user" type="button" data-demo="seller"><strong>Vendedora · carteira própria</strong><span>ana@torus.ai</span></button>
+          </div>
+          <p class="demo-warning">São contas locais com senhas públicas. Não use dados confidenciais.</p>
+        </div>
+        <p class="small muted">Precisa de acesso? Peça ao gerente para cadastrar sua conta.</p>
+      </form>
+    </div>
+  </section>
+
+  <div id="appView" class="app-layout" hidden>
+    <aside id="sidebar" class="sidebar">
+      <a class="brand" href="/" aria-label="Torus, página inicial"><span class="brand-mark" aria-hidden="true">T</span><span>TORUS</span></a>
+      <p class="nav-label">Carteira comercial</p>
+      <nav aria-label="Navegação principal">
+        <button data-page="overview"><span class="nav-icon" aria-hidden="true">⌂</span>Resumo</button>
+        <button data-page="customers"><span class="nav-icon" aria-hidden="true">◉</span>Clientes</button>
+        <button data-page="meetings"><span class="nav-icon" aria-hidden="true">▤</span>Reuniões</button>
+        <button data-page="tasks"><span class="nav-icon" aria-hidden="true">✓</span>Tarefas <b id="taskCount" class="nav-count"></b></button>
+        <button data-page="team" data-manager><span class="nav-icon" aria-hidden="true">◎</span>Equipe</button>
+        <button data-page="account"><span class="nav-icon" aria-hidden="true">○</span>Minha conta</button>
+      </nav>
+      <div class="sidebar-bottom"><span id="sideUserName"></span><small id="sideUserRole"></small><button id="logoutButton">Sair da conta</button></div>
+    </aside>
+    <main id="mainContent">
+      <header class="topbar"><div class="topbar-title"><button id="mobileMenu" class="mobile-menu" aria-label="Abrir menu" aria-expanded="false">Menu</button><div><p class="eyebrow" id="scopeLabel">MINHA CARTEIRA</p><h1 id="pageTitle">Resumo</h1></div></div><div class="actions"><button id="refreshButton" title="Buscar os dados mais recentes">Atualizar</button><button class="primary" data-page="upload">Analisar reunião</button></div></header>
+      <p id="globalError" class="banner error" role="alert" hidden></p>
+      <div class="content">
+        <section id="page-overview" class="page" hidden>
+          <div class="section-heading"><div><p class="eyebrow">O QUE PRECISA DE ACOMPANHAMENTO</p><h2>Prioridades da carteira</h2><p class="muted">Clientes com sinais de atenção e tarefas que ainda precisam de retorno.</p></div><span id="todayLabel" class="date-label"></span></div>
+          <div id="metrics" class="metrics"></div>
+          <div class="overview-grid"><article class="card"><div class="card-heading"><h3>Próximos contatos</h3><button data-page="tasks" class="text-button">Ver tarefas</button></div><div id="upcomingTasks"></div></article><article class="card"><div class="card-heading"><h3>Clientes para revisar</h3><button data-page="customers" class="text-button">Ver clientes</button></div><div id="priorityCustomers"></div></article></div>
+          <article class="card"><div class="card-heading"><h3>Reuniões recentes</h3><button data-page="meetings" class="text-button">Ver histórico</button></div><div id="recentMeetings"></div></article>
+          <p class="method-note">Os indicadores vão de 0 a 100 pontos. Eles sinalizam trechos para revisão, não a chance de cancelamento ou venda. O classificador atual teve 48% de acurácia em 25 frases sintéticas.</p>
+        </section>
+
+        <section id="page-customers" class="page" hidden>
+          <div class="section-heading"><div><h2>Clientes e histórico</h2><p class="muted">Abra a ficha para consultar reuniões, anotações e tarefas do cliente.</p></div><button class="primary" id="newCustomer">Cadastrar cliente</button></div>
+          <div class="filters"><label>Buscar cliente<input id="customerSearch" type="search" placeholder="Nome ou segmento"></label><label>Etapa<select id="customerStage"><option value="">Todas</option><option value="prospect">Em negociação</option><option value="active">Em atendimento</option><option value="renewal">Em renovação</option><option value="inactive">Sem atendimento ativo</option></select></label></div>
+          <div id="customerList" class="customer-grid"></div>
+        </section>
+
+        <section id="page-meetings" class="page" hidden>
+          <div class="section-heading"><div><h2>Histórico de reuniões</h2><p class="muted">Confira as falas e o motivo dos indicadores antes de decidir a próxima ação.</p></div><button id="exportMeetings">Exportar CSV</button></div>
+          <div class="filters"><label>Buscar reunião<input id="meetingSearch" type="search" placeholder="Cliente, título ou vendedor"></label><label>Faixa de risco<select id="meetingRisk"><option value="">Todas</option><option value="low">Baixo sinal de risco</option><option value="medium">Atenção</option><option value="high">Prioridade de revisão</option></select></label></div>
+          <article class="card"><div id="meetingList"></div></article><p class="small muted">A data exibida é a do registro no Torus. A exportação contém todas as reuniões às quais você tem acesso, independentemente dos filtros da tela.</p>
+        </section>
+
+        <section id="page-tasks" class="page" hidden>
+          <div class="section-heading"><div><h2>Tarefas de acompanhamento</h2><p class="muted">Registre o que ficou combinado. Cada tarefa pertence ao vendedor responsável pelo cliente.</p></div><button id="newTask" class="primary">Criar tarefa</button></div>
+          <div class="filters"><label>Situação<select id="taskStatus"><option value="open">Pendentes</option><option value="overdue">Em atraso</option><option value="done">Concluídas</option><option value="all">Todas</option></select></label><label>Buscar tarefa<input id="taskSearch" type="search" placeholder="Tarefa, cliente ou vendedor"></label></div>
+          <article class="card"><div id="taskList"></div></article>
+        </section>
+
+        <section id="page-upload" class="page" hidden>
+          <div class="section-heading"><div><h2>Analisar uma transcrição</h2><p class="muted">Selecione o cliente e envie a conversa. O resultado ficará no histórico dele.</p></div></div>
+          <form id="uploadForm" class="card form-card">
+            <label for="uploadCustomer">Cliente</label><select id="uploadCustomer" name="customer_id" required></select><p class="hint">Não encontrou o cliente? Cadastre-o na área Clientes antes de enviar a reunião.</p>
+            <label for="meetingTitle">Título da reunião</label><input id="meetingTitle" name="title" required maxlength="120" placeholder="Ex.: Revisão das licenças do Protheus">
+            <label for="meetingFile">Arquivo da transcrição</label><input id="meetingFile" name="file" type="file" accept=".json,application/json" required aria-describedby="uploadHint"><p id="uploadHint" class="hint">JSON em UTF-8, até 1 MB. Identifique as falas como cliente ou vendedor. Áudio e vídeo não são aceitos.</p>
+            <details><summary>Ver o formato do arquivo</summary><pre>{
+  "meeting_id": 1042,
+  "conversation": [
+    {"speaker": "cliente", "text": "Queremos ampliar as licenças."}
+  ]
+}</pre></details>
+            <p class="error" role="alert" data-form-error></p><div class="actions"><button class="primary" type="submit">Analisar e salvar reunião</button></div>
+          </form>
+        </section>
+
+        <section id="page-team" class="page" hidden>
+          <div class="section-heading"><div><h2>Equipe e acessos</h2><p class="muted">Cadastre pessoas e controle o acesso sem apagar o histórico da carteira.</p></div><button id="newUser" class="primary">Cadastrar pessoa</button></div><div id="teamList" class="customer-grid"></div>
+          <p class="method-note">Desativar o acesso encerra as sessões da pessoa. Clientes e reuniões continuam disponíveis para os gerentes. Não é possível desativar o próprio acesso.</p>
+        </section>
+
+        <section id="page-account" class="page" hidden>
+          <div class="section-heading"><div><h2>Minha conta</h2><p id="accountIdentity" class="muted"></p></div></div>
+          <form id="passwordForm" class="card form-card"><h3>Alterar senha</h3><p class="muted">Ao salvar, todas as suas sessões serão encerradas. Você precisará entrar novamente.</p><label for="currentPassword">Senha atual</label><input id="currentPassword" name="current_password" type="password" required autocomplete="current-password"><label for="newPassword">Nova senha</label><input id="newPassword" name="new_password" type="password" required minlength="15" maxlength="128" autocomplete="new-password" aria-describedby="passwordHint"><p id="passwordHint" class="hint">Use de 15 a 128 caracteres. Uma frase longa é permitida; não é obrigatório misturar símbolos e números.</p><label for="confirmPassword">Repita a nova senha</label><input id="confirmPassword" type="password" required autocomplete="new-password"><p data-form-error class="error" role="alert"></p><button class="primary" type="submit">Salvar nova senha</button></form>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="detailDialog" class="detail-dialog" aria-labelledby="detailTitle"><header class="dialog-heading"><h2 id="detailTitle">Detalhes</h2><button data-close="detailDialog" aria-label="Fechar detalhes">Fechar</button></header><div id="detailBody"></div></dialog>
+  <dialog id="formDialog" class="form-dialog" aria-labelledby="formTitle"><header class="dialog-heading"><h2 id="formTitle"></h2><button data-close="formDialog" aria-label="Fechar formulário">Fechar</button></header><form id="entityForm"><div id="entityFields"></div><p data-form-error class="error" role="alert"></p><div class="actions"><button type="button" data-close="formDialog">Cancelar</button><button type="submit" class="primary" id="entitySubmit">Salvar</button></div></form></dialog>
+  <div id="toast" role="status" class="toast" hidden></div>
+</body>
+</html>
