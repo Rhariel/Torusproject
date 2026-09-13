@@ -9,8 +9,8 @@ const state = {
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[char]));
-const stages = { prospect: 'Em negociação', active: 'Em atendimento', renewal: 'Em renovação', inactive: 'Sem atendimento ativo' };
-const intents = { churn_risk: 'Sinal de cancelamento', price_objection: 'Objeção de preço', upsell_opportunity: 'Interesse em expansão', satisfaction: 'Satisfação', neutral: 'Fala neutra' };
+const stages = { prospect: 'Negociação', active: 'Ativo', renewal: 'Renovação', inactive: 'Inativo' };
+const intents = { churn_risk: 'Risco', price_objection: 'Preço', upsell_opportunity: 'Expansão', satisfaction: 'Satisfação', neutral: 'Neutro' };
 const titles = { overview: 'Resumo', customers: 'Clientes', meetings: 'Reuniões', tasks: 'Tarefas', upload: 'Nova análise', team: 'Equipe', account: 'Minha conta' };
 const smallScreen = window.matchMedia('(max-width: 760px)');
 function updateSidebarAccess() {
@@ -21,9 +21,9 @@ updateSidebarAccess();
 const points = value => `${Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} pts`;
 const roleName = role => role === 'manager' ? 'Gerente' : 'Vendedor';
 const riskClass = value => value >= 70 ? 'high' : value >= 40 ? 'medium' : 'low';
-const riskName = value => value >= 70 ? 'Prioridade de revisão' : value >= 40 ? 'Atenção' : 'Baixo sinal de risco';
+const riskName = value => value >= 70 ? 'Prioridade' : value >= 40 ? 'Atenção' : 'Baixo';
 const today = () => new Date().toLocaleDateString('sv-SE');
-const dateText = value => value ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value.length === 10 ? `${value}T12:00:00` : `${value.replace(' ', 'T')}Z`)) : 'Sem registro';
+const dateText = value => value ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value.length === 10 ? `${value}T12:00:00` : `${value.replace(' ', 'T')}Z`)) : 'Sem data';
 const overdue = task => task.status === 'open' && task.due_date < today();
 const badge = (text, kind = '') => `<span class="badge ${kind}">${esc(text)}</span>`;
 const empty = (title, description, action = '') => `<div class="empty"><strong>${esc(title)}</strong>${esc(description)}${action ? `<div>${action}</div>` : ''}</div>`;
@@ -36,15 +36,15 @@ async function api(path, options = {}) {
   try {
     response = await fetch(path, { ...options, headers });
   } catch {
-    throw new Error('Não foi possível conectar ao Torus. Confira se INICIAR_TORUS.cmd está em execução e tente novamente.');
+    throw new Error('Sem conexão com o Torus.');
   }
   if (response.status === 401 && path !== '/auth/login') {
     clearSession();
-    throw new Error('Sua sessão expirou. Entre novamente.');
+    throw new Error('Sessão expirada. Entre novamente.');
   }
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(typeof data.detail === 'string' ? data.detail : 'Não foi possível salvar. Confira os campos e tente novamente.');
+    throw new Error(typeof data.detail === 'string' ? data.detail : 'Não foi possível concluir.');
   }
   return options.download ? response.blob() : response.json();
 }
@@ -112,7 +112,7 @@ function showPage(page) {
 }
 
 function meetingTable(meetings) {
-  if (!meetings.length) return empty('Nenhuma reunião encontrada', 'Envie uma transcrição ou ajuste os filtros para consultar o histórico.');
+  if (!meetings.length) return empty('Nenhuma reunião', 'Envie uma transcrição ou ajuste os filtros.');
   return `<div class="table-scroll"><table><thead><tr><th>Cliente / reunião</th><th>Registrada em</th><th>Risco</th><th>Expansão</th><th>Revisão</th><th>Detalhes</th></tr></thead><tbody>${meetings.map(item => `<tr>
     <td><strong>${esc(item.customer_name)}</strong>${esc(item.title)}<small>${esc(item.seller.name)}</small></td>
     <td>${dateText(item.created_at)}</td><td class="score ${riskClass(item.summary.churn_risk_score)}">${points(item.summary.churn_risk_score)}</td><td class="score">${points(item.summary.opportunity_score)}</td>
@@ -120,7 +120,7 @@ function meetingTable(meetings) {
 }
 
 function taskRows(tasks, compact = false) {
-  if (!tasks.length) return empty('Nenhuma tarefa nesta lista', 'Crie uma tarefa para registrar o próximo contato com um cliente.');
+  if (!tasks.length) return empty('Nenhuma tarefa', 'Crie uma tarefa para o próximo contato.');
   return tasks.map(task => `<div class="list-row"><div><strong>${esc(task.title)}</strong><small>${esc(task.customer_name)} · ${esc(task.seller_name)}</small><small>${dateText(task.due_date)}${task.priority === 'high' ? ' · Prioridade alta' : ''}</small></div><div class="actions">${badge(task.status === 'done' ? 'Concluída' : overdue(task) ? 'Em atraso' : 'Pendente', task.status === 'done' ? 'done' : overdue(task) ? 'high' : '')}<button data-task="${task.id}">${compact ? 'Abrir' : 'Editar tarefa'}</button></div></div>`).join('');
 }
 
@@ -128,17 +128,17 @@ function renderOverview() {
   const openTasks = state.tasks.filter(task => task.status === 'open');
   const urgentCustomers = state.customers.filter(item => item.latest_summary?.churn_risk_score >= 70);
   const metrics = [
-    ['Clientes na carteira', state.customers.length, 'clientes cadastrados', ''],
-    ['Tarefas pendentes', openTasks.length, 'contatos ainda não concluídos', ''],
-    ['Tarefas em atraso', openTasks.filter(overdue).length, 'prazo anterior a hoje', 'alert'],
-    ['Clientes para revisar', urgentCustomers.length, 'último risco a partir de 70 pontos', 'alert'],
+    ['Clientes', state.customers.length, 'na carteira', ''],
+    ['Tarefas', openTasks.length, 'pendentes', ''],
+    ['Em atraso', openTasks.filter(overdue).length, 'tarefas', 'alert'],
+    ['Revisar', urgentCustomers.length, 'clientes', 'alert'],
   ];
   $('metrics').innerHTML = metrics.map(([label, count, note, kind]) => `<article class="metric ${kind}"><span>${label}</span><strong>${count}</strong><small>${note}</small></article>`).join('');
   $('todayLabel').textContent = dateText(today());
   $('taskCount').textContent = openTasks.length || '';
   $('upcomingTasks').innerHTML = taskRows(openTasks.slice(0, 4), true);
   const priority = [...state.customers].filter(item => item.latest_summary?.churn_risk_score >= 40 || item.latest_summary?.opportunity_score >= 45).sort((a, b) => b.latest_summary.churn_risk_score - a.latest_summary.churn_risk_score).slice(0, 4);
-  $('priorityCustomers').innerHTML = priority.length ? priority.map(item => `<div class="list-row"><div><strong>${esc(item.name)}</strong><small>${esc(item.seller_name)} · ${item.latest_summary.churn_risk_score >= 40 ? `${points(item.latest_summary.churn_risk_score)} de risco` : `${points(item.latest_summary.opportunity_score)} de expansão`}</small></div><button data-customer="${item.id}">Abrir ficha</button></div>`).join('') : empty('Nenhum cliente nas faixas de atenção', 'Esta lista destaca o último registro com risco a partir de 40 ou expansão a partir de 45 pontos.');
+  $('priorityCustomers').innerHTML = priority.length ? priority.map(item => `<div class="list-row"><div><strong>${esc(item.name)}</strong><small>${esc(item.seller_name)} · ${item.latest_summary.churn_risk_score >= 40 ? `${points(item.latest_summary.churn_risk_score)} de risco` : `${points(item.latest_summary.opportunity_score)} de expansão`}</small></div><button data-customer="${item.id}">Abrir</button></div>`).join('') : empty('Nenhum cliente em atenção', 'Os sinais aparecem aqui quando passam do limite.');
   $('recentMeetings').innerHTML = meetingTable(state.meetings.slice(0, 4));
 }
 
@@ -146,7 +146,7 @@ function renderCustomers() {
   const query = $('customerSearch').value.trim().toLocaleLowerCase('pt-BR');
   const stage = $('customerStage').value;
   const customers = state.customers.filter(item => (!stage || item.stage === stage) && `${item.name} ${item.segment}`.toLocaleLowerCase('pt-BR').includes(query));
-  $('customerList').innerHTML = customers.length ? customers.map(item => `<article class="card customer-card">${badge(stages[item.stage])}<h3>${esc(item.name)}</h3><p class="meta">${esc(item.segment || 'Segmento não informado')} · ${esc(item.seller_name)}</p><div class="customer-stats"><div><strong>${item.meeting_count}</strong><small>reuniões</small></div><div><strong>${item.open_tasks}</strong><small>tarefas pendentes</small></div><div><strong>${item.latest_summary ? points(item.latest_summary.churn_risk_score) : '—'}</strong><small>risco na última reunião</small></div></div><p class="small muted">${item.next_due ? `Próximo prazo: ${dateText(item.next_due)}` : 'Nenhum próximo contato registrado.'}</p><div class="actions"><button data-customer="${item.id}">Abrir ficha</button><button data-edit-customer="${item.id}" class="text-button">Editar cadastro</button></div></article>`).join('') : empty('Nenhum cliente encontrado', 'Cadastre o primeiro cliente ou ajuste a busca.');
+  $('customerList').innerHTML = customers.length ? customers.map(item => `<article class="card customer-card">${badge(stages[item.stage])}<h3>${esc(item.name)}</h3><p class="meta">${esc(item.segment || 'Sem segmento')} · ${esc(item.seller_name)}</p><div class="customer-stats"><div><strong>${item.meeting_count}</strong><small>reuniões</small></div><div><strong>${item.open_tasks}</strong><small>tarefas</small></div><div><strong>${item.latest_summary ? points(item.latest_summary.churn_risk_score) : '—'}</strong><small>risco</small></div></div><p class="small muted">${item.next_due ? `Próximo prazo: ${dateText(item.next_due)}` : 'Sem próximo contato.'}</p><div class="actions"><button data-customer="${item.id}">Abrir</button><button data-edit-customer="${item.id}" class="text-button">Editar</button></div></article>`).join('') : empty('Nenhum cliente', 'Cadastre um cliente ou ajuste a busca.');
 }
 
 function renderMeetings() {
@@ -163,11 +163,11 @@ function renderTasks() {
 
 function renderTeam() {
   if (state.user.role !== 'manager') return;
-  $('teamList').innerHTML = state.users.map(user => `<article class="card customer-card">${badge(user.active ? 'Acesso ativo' : 'Acesso desativado', user.active ? 'done' : '')}<h3>${esc(user.name)}</h3><p class="meta">${esc(user.email)} · ${roleName(user.role)}</p><div class="customer-stats"><div><strong>${state.customers.filter(item => item.seller_id === user.id).length}</strong><small>clientes atribuídos</small></div><div><strong>${state.tasks.filter(item => item.seller_id === user.id && item.status === 'open').length}</strong><small>tarefas pendentes</small></div></div>${user.id !== state.user.id ? `<button data-access-user="${user.id}">${user.active ? 'Desativar acesso' : 'Reativar acesso'}</button>` : '<p class="small muted">Esta é a sua conta.</p>'}</article>`).join('');
+  $('teamList').innerHTML = state.users.map(user => `<article class="card customer-card">${badge(user.active ? 'Ativo' : 'Desativado', user.active ? 'done' : '')}<h3>${esc(user.name)}</h3><p class="meta">${esc(user.email)} · ${roleName(user.role)}</p><div class="customer-stats"><div><strong>${state.customers.filter(item => item.seller_id === user.id).length}</strong><small>clientes</small></div><div><strong>${state.tasks.filter(item => item.seller_id === user.id && item.status === 'open').length}</strong><small>tarefas</small></div></div>${user.id !== state.user.id ? `<button data-access-user="${user.id}">${user.active ? 'Desativar' : 'Reativar'}</button>` : '<p class="small muted">Sua conta</p>'}</article>`).join('');
 }
 
 function customerOptions(selected = '') {
-  return '<option value="">Selecione o cliente</option>' + state.customers.map(item => `<option value="${item.id}" ${String(item.id) === String(selected) ? 'selected' : ''}>${esc(item.name)}${state.user.role === 'manager' ? ` · ${esc(item.seller_name)}` : ''}</option>`).join('');
+  return '<option value="">Selecione</option>' + state.customers.map(item => `<option value="${item.id}" ${String(item.id) === String(selected) ? 'selected' : ''}>${esc(item.name)}${state.user.role === 'manager' ? ` · ${esc(item.seller_name)}` : ''}</option>`).join('');
 }
 
 function render() {
@@ -185,7 +185,7 @@ function select(name, label, options, selected) {
 }
 
 function notes(value = '') {
-  return `<label for="field-notes">Anotações (opcional)</label><textarea id="field-notes" name="notes" maxlength="4000">${esc(value)}</textarea>`;
+  return `<label for="field-notes">Notas (opcional)</label><textarea id="field-notes" name="notes" maxlength="4000">${esc(value)}</textarea>`;
 }
 
 function editEntity(title, fields, save, label = 'Salvar') {
@@ -196,14 +196,14 @@ function editEntity(title, fields, save, label = 'Salvar') {
   $('entitySubmit').textContent = label;
   state.saveEntity = save;
   state.savedMessage = {
-    'Cadastrar cliente': 'Cliente cadastrado na carteira.',
-    'Editar cliente': 'Cadastro do cliente atualizado.',
-    'Criar tarefa': 'Tarefa criada com o prazo informado.',
+    'Cadastrar cliente': 'Cliente cadastrado.',
+    'Editar cliente': 'Cliente atualizado.',
+    'Criar tarefa': 'Tarefa criada.',
     'Editar tarefa': 'Tarefa atualizada.',
     'Cadastrar pessoa': 'Pessoa cadastrada na equipe.',
-    'Desativar acesso': 'Acesso desativado. O histórico foi preservado.',
+    'Desativar acesso': 'Acesso desativado.',
     'Reativar acesso': 'Acesso reativado.',
-    'Editar título da reunião': 'Título da reunião atualizado.',
+    'Editar título da reunião': 'Título atualizado.',
   }[title];
   $('formDialog').showModal();
 }
@@ -219,10 +219,10 @@ function editCustomer(id) {
 }
 
 function editTask(id, customerId = '', meetingId = null, suggestion = '') {
-  if (!state.customers.length) { notify('Cadastre um cliente antes de criar a tarefa.'); showPage('customers'); return; }
+  if (!state.customers.length) { notify('Cadastre um cliente primeiro.'); showPage('customers'); return; }
   const item = state.tasks.find(task => task.id === Number(id));
   let fields = item ? `<p class="muted">${esc(item.customer_name)} · ${esc(item.seller_name)}</p>` : `<label for="field-customer_id">Cliente</label><select id="field-customer_id" name="customer_id" required>${customerOptions(customerId)}</select>`;
-  fields += field('title', 'O que precisa ser feito?', item?.title || suggestion.slice(0, 160), 'text', 'required maxlength="160" placeholder="Ex.: Retornar com a proposta de licenças"') + field('due_date', 'Prazo', item?.due_date || today(), 'date', 'required') + select('priority', 'Prioridade', { normal: 'Normal', high: 'Alta' }, item?.priority || 'normal') + notes(item?.notes);
+  fields += field('title', 'Tarefa', item?.title || suggestion.slice(0, 160), 'text', 'required maxlength="160" placeholder="Ex.: Enviar proposta"') + field('due_date', 'Prazo', item?.due_date || today(), 'date', 'required') + select('priority', 'Prioridade', { normal: 'Normal', high: 'Alta' }, item?.priority || 'normal') + notes(item?.notes);
   if (item) fields += select('status', 'Situação', { open: 'Pendente', done: 'Concluída' }, item.status);
   editEntity(item ? 'Editar tarefa' : 'Criar tarefa', fields, async values => {
     if (!item) { values.customer_id = Number(values.customer_id); values.meeting_id = meetingId; }
@@ -231,14 +231,14 @@ function editTask(id, customerId = '', meetingId = null, suggestion = '') {
 }
 
 function addUser() {
-  const fields = field('name', 'Nome completo', '', 'text', 'required maxlength="120" autocomplete="name"') + field('email', 'E-mail de acesso', '', 'email', 'required maxlength="254" autocomplete="off"') + select('role', 'Perfil de acesso', { seller: 'Vendedor: apenas a própria carteira', manager: 'Gerente: toda a equipe' }, 'seller') + field('password', 'Senha inicial', '', 'password', 'required minlength="15" maxlength="128" autocomplete="new-password"') + '<p class="hint">De 15 a 128 caracteres. Compartilhe a senha por um canal seguro e peça à pessoa que a altere na área Minha conta.</p>' + field('current_password', 'Sua senha atual, para confirmar', '', 'password', 'required autocomplete="current-password"');
+  const fields = field('name', 'Nome', '', 'text', 'required maxlength="120" autocomplete="name"') + field('email', 'E-mail', '', 'email', 'required maxlength="254" autocomplete="off"') + select('role', 'Perfil', { seller: 'Vendedor', manager: 'Gerente' }, 'seller') + field('password', 'Senha inicial', '', 'password', 'required minlength="15" maxlength="128" autocomplete="new-password"') + '<p class="hint">15 a 128 caracteres.</p>' + field('current_password', 'Sua senha', '', 'password', 'required autocomplete="current-password"');
   editEntity('Cadastrar pessoa', fields, values => api('/users', { method: 'POST', body: JSON.stringify(values) }), 'Cadastrar pessoa');
 }
 
 function changeAccess(id) {
   const user = state.users.find(item => item.id === Number(id));
   const action = user.active ? 'Desativar' : 'Reativar';
-  editEntity(`${action} acesso`, `<p>${esc(user.name)} · ${esc(user.email)}</p><p class="muted">${user.active ? 'As sessões serão encerradas. O histórico, os clientes e as tarefas não serão apagados.' : 'A pessoa voltará a entrar com a senha já cadastrada.'}</p>` + field('current_password', 'Sua senha atual, para confirmar', '', 'password', 'required autocomplete="current-password"'), values => api(`/users/${user.id}/access`, { method: 'PATCH', body: JSON.stringify({ ...values, active: !user.active }) }), `${action} acesso`);
+  editEntity(`${action} acesso`, `<p>${esc(user.name)} · ${esc(user.email)}</p><p class="muted">${user.active ? 'As sessões serão encerradas. O histórico será mantido.' : 'A senha atual continuará válida.'}</p>` + field('current_password', 'Sua senha', '', 'password', 'required autocomplete="current-password"'), values => api(`/users/${user.id}/access`, { method: 'PATCH', body: JSON.stringify({ ...values, active: !user.active }) }), `${action} acesso`);
 }
 
 function showDetail(title, html, descriptor) {
@@ -252,20 +252,20 @@ async function openCustomer(id) {
   const customer = await api(`/customers/${id}`);
   const history = [...customer.meetings].reverse();
   const delta = history.length >= 2 ? history.at(-1).summary.churn_risk_score - history.at(-2).summary.churn_risk_score : null;
-  const trend = delta === null ? 'São necessárias duas reuniões para comparar os indicadores.' : `Variação de ${delta > 0 ? '+' : ''}${points(delta)} no risco entre os dois últimos registros. Os números não comprovam mudança na chance de cancelamento.`;
-  showDetail(customer.name, `<p class="muted">${esc(stages[customer.stage])} · ${esc(customer.seller_name)} · ${esc(customer.segment || 'Segmento não informado')}</p><div class="actions"><button data-edit-customer="${id}">Editar cadastro</button><button data-customer-task="${id}" class="primary">Criar tarefa</button></div><div class="detail-block"><h3>Anotações do atendimento</h3><p style="white-space:pre-wrap">${esc(customer.notes || 'Nenhuma anotação registrada.')}</p></div><div class="detail-block"><h3>Indicadores ao longo dos registros</h3><p class="small muted">${esc(trend)}</p>${history.length ? `<div class="table-scroll"><table><thead><tr><th>Registro</th><th>Reunião</th><th>Risco</th><th>Expansão</th></tr></thead><tbody>${history.map(item => `<tr><td>${dateText(item.created_at)}</td><td><button data-meeting="${item.id}">${esc(item.title)}</button></td><td>${points(item.summary.churn_risk_score)}</td><td>${points(item.summary.opportunity_score)}</td></tr>`).join('')}</tbody></table></div>` : empty('Sem reuniões registradas', 'Envie uma transcrição para iniciar o histórico deste cliente.')}</div><div class="detail-block"><h3>Tarefas do cliente</h3>${taskRows(customer.tasks)}</div>`, { type: 'customer', id });
+  const trend = delta === null ? 'É preciso ter duas reuniões para comparar.' : `Variação de ${delta > 0 ? '+' : ''}${points(delta)} no risco. Use como referência.`;
+  showDetail(customer.name, `<p class="muted">${esc(stages[customer.stage])} · ${esc(customer.seller_name)} · ${esc(customer.segment || 'Sem segmento')}</p><div class="actions"><button data-edit-customer="${id}">Editar</button><button data-customer-task="${id}" class="primary">Nova tarefa</button></div><div class="detail-block"><h3>Notas</h3><p style="white-space:pre-wrap">${esc(customer.notes || 'Sem notas.')}</p></div><div class="detail-block"><h3>Indicadores</h3><p class="small muted">${esc(trend)}</p>${history.length ? `<div class="table-scroll"><table><thead><tr><th>Data</th><th>Reunião</th><th>Risco</th><th>Expansão</th></tr></thead><tbody>${history.map(item => `<tr><td>${dateText(item.created_at)}</td><td><button data-meeting="${item.id}">${esc(item.title)}</button></td><td>${points(item.summary.churn_risk_score)}</td><td>${points(item.summary.opportunity_score)}</td></tr>`).join('')}</tbody></table></div>` : empty('Sem reuniões', 'Envie uma transcrição para iniciar o histórico.')}</div><div class="detail-block"><h3>Tarefas</h3>${taskRows(customer.tasks)}</div>`, { type: 'customer', id });
 }
 
 function explanation(summary) {
   const details = summary.score_explanation;
-  if (!details) return '<p class="small muted">Esta reunião foi registrada antes do detalhamento dos cálculos. O resultado original foi preservado; a regra combina sinais de cancelamento, objeções de preço, sentimento e produtos citados.</p>';
-  return `<div class="table-scroll"><table class="breakdown"><thead><tr><th>Componente</th><th>Risco</th><th>Expansão</th></tr></thead><tbody><tr><td>Confiança das falas do cliente × 45</td><td>${points(details.churn.intent_points)}</td><td>${points(details.opportunity.intent_points)}</td></tr><tr><td>Objeções de preço × 12</td><td>${points(details.churn.price_points)}</td><td>—</td></tr><tr><td>Sentimento negativo × 80</td><td>${points(details.churn.sentiment_points)}</td><td>—</td></tr><tr><td>Produtos distintos × 8</td><td>—</td><td>${points(details.opportunity.product_points)}</td></tr></tbody></table></div><p class="hint">Cada total é limitado a 100 pontos. ${details.customer_speeches} falas foram identificadas como cliente. ${esc(details.note)}</p>`;
+  if (!details) return '<p class="small muted">Detalhamento indisponível para esta reunião.</p>';
+  return `<div class="table-scroll"><table class="breakdown"><thead><tr><th>Componente</th><th>Risco</th><th>Expansão</th></tr></thead><tbody><tr><td>Intenção × 45</td><td>${points(details.churn.intent_points)}</td><td>${points(details.opportunity.intent_points)}</td></tr><tr><td>Preço × 12</td><td>${points(details.churn.price_points)}</td><td>—</td></tr><tr><td>Sentimento × 80</td><td>${points(details.churn.sentiment_points)}</td><td>—</td></tr><tr><td>Produtos × 8</td><td>—</td><td>${points(details.opportunity.product_points)}</td></tr></tbody></table></div><p class="hint">Máximo de 100 pontos. ${details.customer_speeches} falas do cliente. ${esc(details.note)}</p>`;
 }
 
 async function openMeeting(id) {
   const item = await api(`/meetings/${id}`);
   const summary = item.analysis.summary;
-  const html = `<p class="muted">${esc(item.customer_name)} · ${esc(item.seller.name)} · registrado em ${dateText(item.created_at)}</p><div class="actions no-print"><button data-meeting-task="${item.id}" class="primary">Criar tarefa de acompanhamento</button><button data-rename-meeting="${item.id}">Editar título</button><button id="printReport">Imprimir / salvar PDF</button></div><div class="detail-scores"><div><small>Sinal de risco</small><strong class="score ${riskClass(summary.churn_risk_score)}">${points(summary.churn_risk_score)}</strong></div><div><small>Sinal de expansão</small><strong>${points(summary.opportunity_score)}</strong></div><div><small>Sentimento do cliente</small><strong>${points(summary.sentiment_score)}</strong></div></div><p class="method-note">Indicadores por regras, não probabilidades. Confira as falas antes de agir. A avaliação disponível usou dados sintéticos.</p><div class="recommendation"><strong>Próxima ação sugerida</strong><p>${esc(summary.recommended_action)}</p></div><h3>Como os pontos foram calculados</h3>${explanation(summary)}<div class="detail-block"><h3>Produtos e termos citados</h3><div class="tags">${[...summary.products_identified, ...summary.key_terms.map(item => item.term)].map(term => badge(term)).join('') || '<p class="muted">Nenhum produto ou termo identificado.</p>'}</div><h3>O que foi dito na reunião</h3>${item.analysis.message_analysis.map((message, index) => `<article class="message"><div class="message-header"><strong>${index + 1}. ${esc(message.speaker)}</strong>${badge(intents[message.intent] || message.intent)}</div><p>${esc(message.original_text)}</p><small class="muted">Confiança do classificador: ${Math.round(message.classification.confidence * 100)}%. Não calibrada.</small></article>`).join('')}</div><p class="print-only small">Torus · Relatório local gerado em ${dateText(today())} · Recomendações sujeitas a revisão humana.</p>`;
+  const html = `<p class="muted">${esc(item.customer_name)} · ${esc(item.seller.name)} · ${dateText(item.created_at)}</p><div class="actions no-print"><button data-meeting-task="${item.id}" class="primary">Nova tarefa</button><button data-rename-meeting="${item.id}">Editar título</button><button id="printReport">Salvar PDF</button></div><div class="detail-scores"><div><small>Risco</small><strong class="score ${riskClass(summary.churn_risk_score)}">${points(summary.churn_risk_score)}</strong></div><div><small>Expansão</small><strong>${points(summary.opportunity_score)}</strong></div><div><small>Sentimento</small><strong>${points(summary.sentiment_score)}</strong></div></div><p class="method-note">Indicadores por regras. Revise as falas antes de agir.</p><div class="recommendation"><strong>Próximo passo</strong><p>${esc(summary.recommended_action)}</p></div><h3>Cálculo</h3>${explanation(summary)}<div class="detail-block"><h3>Termos citados</h3><div class="tags">${[...summary.products_identified, ...summary.key_terms.map(item => item.term)].map(term => badge(term)).join('') || '<p class="muted">Nenhum termo.</p>'}</div><h3>Transcrição</h3>${item.analysis.message_analysis.map((message, index) => `<article class="message"><div class="message-header"><strong>${index + 1}. ${esc(message.speaker)}</strong>${badge(intents[message.intent] || message.intent)}</div><p>${esc(message.original_text)}</p><small class="muted">Confiança: ${Math.round(message.classification.confidence * 100)}%</small></article>`).join('')}</div><p class="print-only small">Torus · ${dateText(today())}</p>`;
   showDetail(item.title, html, { type: 'meeting', id, item });
 }
 
@@ -304,11 +304,11 @@ $('entityForm').addEventListener('submit', event => {
 $('passwordForm').addEventListener('submit', event => {
   event.preventDefault();
   submitForm(event.currentTarget, async () => {
-    if ($('newPassword').value !== $('confirmPassword').value) throw new Error('As novas senhas são diferentes. Digite a mesma senha nos dois campos.');
+    if ($('newPassword').value !== $('confirmPassword').value) throw new Error('As senhas não conferem.');
     await api('/auth/change-password', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
     $('passwordForm').reset();
     clearSession();
-    notify('Senha alterada. Entre novamente com a nova senha.');
+    notify('Senha alterada.');
   });
 });
 $('uploadForm').addEventListener('submit', event => {
@@ -318,7 +318,7 @@ $('uploadForm').addEventListener('submit', event => {
     if (!file || file.size > 1000000) throw new Error('Escolha um arquivo JSON com até 1 MB.');
     const result = await api('/analyze_meeting_file', { method: 'POST', body: new FormData(event.currentTarget) });
     $('uploadForm').reset();
-    notify('Reunião analisada e salva no histórico do cliente.');
+    notify('Reunião analisada.');
     await refresh();
     await openMeeting(result.record_id);
   });
@@ -367,7 +367,7 @@ document.addEventListener('click', async event => {
       const anchor = document.createElement('a');
       anchor.href = url; anchor.download = 'torus-reunioes.csv'; anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      notify('Exportação preparada com as reuniões do seu acesso.');
+      notify('Exportação pronta.');
     }
   } catch (error) { report(error); } finally { button.disabled = false; }
 });
